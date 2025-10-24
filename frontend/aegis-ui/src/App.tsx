@@ -10,6 +10,7 @@ import {
   Users, Lock, Clock, Server
 } from 'lucide-react'
 import './App.css'
+import { PolicyEditor } from './components/PolicyEditor'
 import {
   Agent,
   Policy,
@@ -586,57 +587,10 @@ const App: FC = () => {
           <TabsContent value="policies" className="space-y-6">
             <div>
               <h2 className="text-3xl font-bold mb-2">Policies</h2>
-              <p className="text-muted-foreground">Define and manage guardrail policies</p>
+              <p className="text-muted-foreground">Define and manage guardrail policies with code-first and template-based approaches</p>
             </div>
 
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle>Create New Policy</CardTitle>
-                <CardDescription>Define guardrail policies for agent evaluation</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={createPolicy} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="policyName">Policy Name *</Label>
-                      <Input
-                        id="policyName"
-                        value={newPolicy.name}
-                        onChange={(e) => setNewPolicy({ ...newPolicy, name: e.target.value })}
-                        placeholder="e.g., PII Detection Policy"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="policyType">Policy Type *</Label>
-                      <select
-                        id="policyType"
-                        value={newPolicy.policy_type}
-                        onChange={(e) => setNewPolicy({ ...newPolicy, policy_type: e.target.value as 'pii' | 'content_safety' | 'prompt_injection' | 'custom' })}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <option value="pii">PII Detection</option>
-                        <option value="content_safety">Content Safety</option>
-                        <option value="prompt_injection">Prompt Injection</option>
-                        <option value="custom">Custom Rules</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="policyDesc">Description</Label>
-                    <Input
-                      id="policyDesc"
-                      value={newPolicy.description}
-                      onChange={(e) => setNewPolicy({ ...newPolicy, description: e.target.value })}
-                      placeholder="Optional description of this policy"
-                    />
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full md:w-auto">
-                    {loading ? 'Creating...' : 'Create Policy'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+            <PolicyEditor onSave={createPolicy} loading={loading} />
 
             <Card className="shadow-lg">
               <CardHeader>
