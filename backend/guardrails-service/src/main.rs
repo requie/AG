@@ -55,6 +55,25 @@ async fn evaluate_guardrails(req: web::Json<EvaluateRequest>, pool: web::Data<Pg
         checks_run.push("PII_Detection".to_string());
     }
 
+    // Content Safety Check (Mocked External API Call)
+    // Mocked to DENY if the input contains the word "violence"
+    if decision != "DENIED" && req.input_text.to_lowercase().contains("violence") {
+        decision = "DENIED".to_string();
+        reason = "Content safety violation detected (Mocked).".to_string();
+        checks_run.push("Content_Safety".to_string());
+    }
+
+    // Prompt Injection Check (Mocked LLM Call)
+    // Mocked to WARN if the input contains the phrase "ignore all previous instructions"
+    if decision != "DENIED" && req.input_text.to_lowercase().contains("ignore all previous instructions") {
+        // Only WARN if no DENY has been issued yet
+        if decision == "ALLOWED" {
+            decision = "WARN".to_string();
+            reason = "Potential prompt injection detected (Mocked).".to_string();
+        }
+        checks_run.push("Prompt_Injection".to_string());
+    }
+
     // Policy lookup (simplified - in a real app, this would involve Redis caching and more complex logic)
     let policies = sqlx::query_as::<_, Policy>(
         "SELECT id, customer_id, name, agent_id, policy_type, rule_json, enabled, created_at FROM policies WHERE enabled = TRUE AND (agent_id IS NULL OR agent_id = $1)"
@@ -85,11 +104,22 @@ async fn evaluate_guardrails(req: web::Json<EvaluateRequest>, pool: web::Data<Pg
             }
             } else if policy.policy_type == "pii" {
                 // If PII policy is enabled, and PII was detected, associate it
-                if decision == "DENIED" && reason.contains("PII detected") {
+                if decision == "DENIED" && reason.contains("PII detected") && audit_policy_id.is_none() {
                     audit_policy_id = Some(policy.id);
                 }
             }
-            // Add other policy types (content_safety, prompt_injection) here for full implementation
+            } else if policy.policy_type == "content_safety" {
+                // If content safety policy is enabled, and DENY was issued, associate it
+                if decision == "DENIED" && reason.contains("Content safety") && audit_policy_id.is_none() {
+                    audit_policy_id = Some(policy.id);
+                }
+            } else if policy.policy_type == "prompt_injection" {
+                // If prompt injection policy is enabled, and WARN was issued, associate it
+                if decision == "WARN" && reason.contains("prompt injection") && audit_policy_id.is_none() {
+                    audit_policy_id = Some(policy.id);
+                }
+            }
+            // Break on DENY, but continue for WARN to see if a DENY is also triggered
             if decision == "DENIED" { break; }
         }
     }
