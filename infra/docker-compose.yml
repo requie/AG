@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_DB: aegis_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  discovery-service:
+    build:
+      context: ../backend/discovery-service
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/aegis_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      - postgres
+      - redis
+
+  guardrails-service:
+    build:
+      context: ../backend/guardrails-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/aegis_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      - postgres
+      - redis
+
+  aegis-ui:
+    build:
+      context: ../frontend/aegis-ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_DISCOVERY_API_URL: "http://localhost:8080"
+      REACT_APP_GUARDRAILS_API_URL: "http://localhost:8081"
+    depends_on:
+      - discovery-service
+      - guardrails-service
+
+volumes:
+  postgres_data:
+
